@@ -10,12 +10,12 @@ export const EXERCISES = {
   dips:              { name: 'Dips sur chaise',              muscle: 'Triceps',              desc: "Mains au bord de la chaise, descendre le corps en pliant les coudes." },
   superman_tirage:   { name: 'Superman tirage',              muscle: 'Dos, lombaires',       desc: "À plat ventre, lever bras + jambes puis tirer les coudes vers les hanches ('W')." },
 
-  squats:            { name: 'Squats amplitude modérée',     muscle: 'Quadris, fessiers',    desc: "Pousser les fesses en arrière, ne pas casser trop bas (genoux)." },
-  fentes_arriere:    { name: 'Fentes arrière',               muscle: 'Jambes',               desc: "Reculer une jambe et fléchir. Moins de stress genou que les fentes avant." },
+  squats:            { name: 'Squats amplitude modérée',     muscle: 'Quadris, fessiers',    desc: "Pousser les fesses en arrière, dos droit, descendre jusqu'à ~90°." },
+  fentes_arriere:    { name: 'Fentes arrière',               muscle: 'Jambes',               desc: "Reculer une jambe et fléchir les deux jambes à 90°, buste droit." },
   pont_fessier:      { name: 'Pont fessier',                 muscle: 'Fessiers, ischios',    desc: "Allongé, pieds au sol, pousser le bassin vers le haut, serrer les fessiers en haut." },
   rdl:               { name: 'Soulevé de terre jambes tendues', muscle: 'Ischios, fessiers, dos', desc: "Charge (haltères/sac) ou 1 jambe. Buste qui descend, dos plat, sentir l'étirement des ischios." },
   mollets:           { name: 'Mollets',                      muscle: 'Mollets',              desc: "Relevés sur la pointe des pieds, lentement, pause en haut." },
-  wall_sit:          { name: 'Chaise contre le mur',         muscle: 'Quadris (iso)',        desc: "Dos au mur, cuisses à l'horizontale, on tient. Doux pour les genoux." },
+  wall_sit:          { name: 'Chaise contre le mur',         muscle: 'Quadris (iso)',        desc: "Dos au mur, cuisses à l'horizontale, on tient (isométrique)." },
 
   planche:           { name: 'Gainage planche',              muscle: 'Tronc',                desc: "Appui avant-bras, corps aligné, ventre gainé, ne pas creuser le dos." },
   planche_laterale:  { name: 'Planche latérale',             muscle: 'Obliques',             desc: "Sur un avant-bras, corps de profil aligné. Change de côté à mi-temps." },
@@ -46,6 +46,7 @@ export const PROGRAMMES = {
     id: 'A', name: 'Haut du corps', emoji: '💪', color: '#3b82f6',
     focus: 'Pecs, dos, épaules, bras', duration: '~45 min',
     warmup: WARMUP_DEFAULT,
+    pause: 60,
     blocks: [
       { title: 'Circuit muscu', rounds: 3, work: 40, rest: 20, roundRest: 45,
         exercises: ['pompes', 'pompes_diamant', 'pike_pushups', 'rowing', 'dips', 'superman_tirage'] },
@@ -56,8 +57,9 @@ export const PROGRAMMES = {
   },
   B: {
     id: 'B', name: 'Bas du corps', emoji: '🦵', color: '#22c55e',
-    focus: 'Quadris, ischios, fessiers, mollets (knee-safe)', duration: '~45 min',
+    focus: 'Quadris, ischios, fessiers, mollets', duration: '~45 min',
     warmup: WARMUP_DEFAULT,
+    pause: 60,
     blocks: [
       { title: 'Circuit muscu', rounds: 3, work: 40, rest: 20, roundRest: 45,
         exercises: ['squats', 'fentes_arriere', 'pont_fessier', 'rdl', 'mollets', 'wall_sit'] },
@@ -70,6 +72,7 @@ export const PROGRAMMES = {
     id: 'C', name: 'Tronc', emoji: '🎯', color: '#f59e0b',
     focus: 'Abdos, obliques, lombaires', duration: '~45 min',
     warmup: WARMUP_DEFAULT,
+    pause: 60,
     blocks: [
       { title: 'Circuit muscu', rounds: 3, work: 40, rest: 20, roundRest: 45,
         exercises: ['planche', 'planche_laterale', 'crunchs', 'releves_jambes', 'superman', 'russian_twists'] },
@@ -82,6 +85,7 @@ export const PROGRAMMES = {
     id: 'D', name: 'Full body', emoji: '🔥', color: '#ef4444',
     focus: 'Tout le corps', duration: '~45 min',
     warmup: WARMUP_DEFAULT,
+    pause: 60,
     blocks: [
       { title: 'Circuit muscu', rounds: 3, work: 40, rest: 20, roundRest: 45,
         exercises: ['pompes', 'squats', 'pont_fessier', 'planche', 'dips', 'superman'] },

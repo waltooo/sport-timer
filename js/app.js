@@ -8,9 +8,8 @@ let engine = null
 let currentSteps = []
 let gifTimer = null
 let wakeLock = null
-let editState = null // pendant l'édition : [[exId,...], ...]
+let editState = null // { blocks:[[exId..]], times:[{work,rest,roundRest}], pause }
 
-// liste triée de tous les exercices (pour les sélecteurs)
 const ALL_EX = Object.entries(EXERCISES).map(([id, e]) => ({ id, name: e.name }))
   .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
 
@@ -43,15 +42,34 @@ function frDate(iso) {
 }
 function clearGif() { if (gifTimer) { clearInterval(gifTimer); gifTimer = null } }
 
-// Programme effectif = défaut + personnalisation locale éventuelle
+// Normalise l'ancien format (tableau) vers { blocks, times, pause }
+function normCustom(c) {
+  if (!c) return null
+  if (Array.isArray(c)) return { blocks: c }
+  return c
+}
+// Programme effectif = défaut + personnalisation locale (exos + temps + pause)
 function getProgramme(id) {
   const base = PROGRAMMES[id]
-  const custom = Store.getCustom(id)
-  if (!custom) return base
-  const blocks = base.blocks.map((b, i) => ({ ...b, exercises: (custom[i] && custom[i].length) ? custom[i] : b.exercises }))
-  return { ...base, blocks }
+  const c = normCustom(Store.getCustom(id))
+  if (!c) return base
+  const blocks = base.blocks.map((b, i) => ({
+    ...b,
+    exercises: (c.blocks && c.blocks[i] && c.blocks[i].length) ? c.blocks[i] : b.exercises,
+    work: c.times?.[i]?.work ?? b.work,
+    rest: c.times?.[i]?.rest ?? b.rest,
+    roundRest: c.times?.[i]?.roundRest ?? b.roundRest,
+  }))
+  return { ...base, blocks, pause: c.pause ?? base.pause }
 }
-function effectiveBlocks(id) { return getProgramme(id).blocks.map((b) => [...b.exercises]) }
+function effState(id) {
+  const p = getProgramme(id)
+  return {
+    blocks: p.blocks.map((b) => [...b.exercises]),
+    times: p.blocks.map((b) => ({ work: b.work, rest: b.rest, roundRest: b.roundRest })),
+    pause: p.pause ?? 60,
+  }
+}
 
 function exVisual(exId) {
   const ex = EXERCISES[exId]
@@ -119,13 +137,38 @@ function renderHome() {
     </div>
     <footer class="home-foot">
       <p>Rotation conseillée : A → B → C → D. Séance du soir 1 soir sur 2.</p>
-      <p class="knee">⚠️ Genoux fragiles : variantes sans saut possibles, garde les genouillères.</p>
     </footer>`
   app.querySelectorAll('.card-start').forEach((b) => b.addEventListener('click', () => startSession(b.dataset.prog)))
   app.querySelectorAll('.card-edit').forEach((b) => b.addEventListener('click', () => renderEditor(b.dataset.edit)))
 }
 
-// ---------- Éditeur de programme ----------
+// ---------- Choix muscu / HIIT / complète ----------
+function startSession(progId) {
+  const prog = getProgramme(progId)
+  if (prog.blocks.length >= 2) return renderChooser(progId, prog)
+  runSession(progId, null)
+}
+function renderChooser(progId, prog) {
+  document.body.style.setProperty('--accent', prog.color)
+  const labels = ['Muscu seule', 'HIIT seul', 'Bloc 3', 'Bloc 4']
+  const blockBtns = prog.blocks.map((b, i) =>
+    `<button class="choice" data-only="${i}">${labels[i] || b.title} <small>${b.title}</small></button>`).join('')
+  app.innerHTML = `
+    <div class="chooser">
+      <div class="topbar"><div class="heading">${prog.emoji} ${prog.name}</div>
+        <button id="ch-back" class="quit" style="background:#475569">← Retour</button></div>
+      <p class="edit-hint">Que veux-tu faire aujourd'hui ?</p>
+      <button class="choice primary-choice" data-only="all">▶️ Séance complète <small>muscu + pause + HIIT</small></button>
+      ${blockBtns}
+    </div>`
+  app.querySelector('[data-only="all"]').onclick = () => runSession(progId, null)
+  prog.blocks.forEach((_, i) => {
+    const el = app.querySelector(`[data-only="${i}"]`); if (el) el.onclick = () => runSession(progId, [i])
+  })
+  document.getElementById('ch-back').onclick = renderHome
+}
+
+// ---------- Éditeur ----------
 function optionList(selectedId) {
   return ALL_EX.map((e) => `<option value="${e.id}"${e.id === selectedId ? ' selected' : ''}>${e.name}</option>`).join('')
 }
@@ -133,17 +176,23 @@ function saveEdit(progId) { Store.setCustom(progId, editState) }
 
 function renderEditor(progId) {
   const prog = PROGRAMMES[progId]
-  if (!editState) editState = effectiveBlocks(progId)
+  if (!editState) editState = effState(progId)
   document.body.style.setProperty('--accent', prog.color)
 
   const blocksHtml = prog.blocks.map((b, bi) => {
-    const rows = editState[bi].map((exId, ei) => `
+    const t = editState.times[bi]
+    const rows = editState.blocks[bi].map((exId, ei) => `
       <div class="edit-row">
         <select class="repl" data-b="${bi}" data-e="${ei}">${optionList(exId)}</select>
-        <button class="mini danger-btn" data-rm-b="${bi}" data-rm-e="${ei}" ${editState[bi].length <= 1 ? 'disabled' : ''}>✕</button>
+        <button class="mini danger-btn" data-rm-b="${bi}" data-rm-e="${ei}" ${editState.blocks[bi].length <= 1 ? 'disabled' : ''}>✕</button>
       </div>`).join('')
     return `<div class="edit-block">
-      <h3>${b.title} <small>(${editState[bi].length} exos)</small></h3>
+      <h3>${b.title} <small>(${editState.blocks[bi].length} exos)</small></h3>
+      <div class="edit-times">
+        <label>Effort<input type="number" inputmode="numeric" min="5" max="600" class="tnum" data-t="work" data-b="${bi}" value="${t.work}"><span>s</span></label>
+        <label>Repos<input type="number" inputmode="numeric" min="0" max="600" class="tnum" data-t="rest" data-b="${bi}" value="${t.rest}"><span>s</span></label>
+        <label>Repos tours<input type="number" inputmode="numeric" min="0" max="600" class="tnum" data-t="roundRest" data-b="${bi}" value="${t.roundRest}"><span>s</span></label>
+      </div>
       ${rows}
       <div class="edit-add">
         <select data-add="${bi}"><option value="">+ ajouter un exercice…</option>${optionList('')}</select>
@@ -151,47 +200,55 @@ function renderEditor(progId) {
     </div>`
   }).join('')
 
+  const pauseHtml = prog.blocks.length >= 2
+    ? `<div class="edit-block"><h3>Pause entre les blocs</h3>
+        <div class="edit-times"><label>Pause<input type="number" inputmode="numeric" min="0" max="600" class="tnum" data-t="pause" value="${editState.pause}"><span>s</span></label></div></div>`
+    : ''
+
   app.innerHTML = `
     <div class="editor">
       <div class="topbar">
         <div class="heading">✏️ Personnaliser — ${prog.emoji} ${prog.name}</div>
         <button id="ed-done" class="quit" style="background:#22c55e">✓ OK</button>
       </div>
-      <p class="edit-hint">Remplace un exercice via le menu, retire-le avec ✕, ou ajoute-en un. Sauvegarde automatique sur ton appareil.</p>
+      <p class="edit-hint">Change les exercices et les temps (en secondes). Sauvegarde automatique sur ton appareil.</p>
       ${blocksHtml}
+      ${pauseHtml}
       <div class="edit-foot">
         <button id="ed-reset" class="reset-btn">↺ Réinitialiser ce programme</button>
       </div>
     </div>`
 
-  // remplacer
   app.querySelectorAll('select.repl').forEach((s) => s.addEventListener('change', () => {
-    editState[+s.dataset.b][+s.dataset.e] = s.value
-    saveEdit(progId); renderEditor(progId)
+    editState.blocks[+s.dataset.b][+s.dataset.e] = s.value; saveEdit(progId); renderEditor(progId)
   }))
-  // retirer
   app.querySelectorAll('[data-rm-b]').forEach((b) => b.addEventListener('click', () => {
     const bi = +b.dataset.rmB, ei = +b.dataset.rmE
-    if (editState[bi].length <= 1) return
-    editState[bi].splice(ei, 1)
-    saveEdit(progId); renderEditor(progId)
+    if (editState.blocks[bi].length <= 1) return
+    editState.blocks[bi].splice(ei, 1); saveEdit(progId); renderEditor(progId)
   }))
-  // ajouter
   app.querySelectorAll('[data-add]').forEach((s) => s.addEventListener('change', () => {
     if (!s.value) return
-    editState[+s.dataset.add].push(s.value)
-    saveEdit(progId); renderEditor(progId)
+    editState.blocks[+s.dataset.add].push(s.value); saveEdit(progId); renderEditor(progId)
+  }))
+  // Temps : mise à jour sans re-render (pour ne pas perdre le focus)
+  app.querySelectorAll('input.tnum').forEach((inp) => inp.addEventListener('change', () => {
+    const v = Math.max(0, Math.min(600, parseInt(inp.value, 10) || 0))
+    inp.value = v
+    if (inp.dataset.t === 'pause') editState.pause = v
+    else editState.times[+inp.dataset.b][inp.dataset.t] = v
+    saveEdit(progId)
   }))
   document.getElementById('ed-reset').onclick = () => {
-    Store.resetCustom(progId); editState = effectiveBlocks(progId); renderEditor(progId)
+    Store.resetCustom(progId); editState = effState(progId); renderEditor(progId)
   }
   document.getElementById('ed-done').onclick = () => { editState = null; renderHome() }
 }
 
 // ---------- Session ----------
-function startSession(progId) {
+function runSession(progId, blockFilter) {
   const prog = getProgramme(progId)
-  currentSteps = buildSequence(prog)
+  currentSteps = buildSequence(prog, blockFilter ? { blocks: blockFilter } : {})
   document.body.style.setProperty('--accent', prog.color)
   requestWakeLock()
   engine = new Engine(currentSteps, {
@@ -209,7 +266,7 @@ function renderStep(prog, step, idx, total) {
   const pct = Math.round((idx / (total - 1)) * 100)
   let heading = prog.name
   if (step.type === 'work') heading = `${step.block} · Tour ${step.round}/${step.rounds} · Exo ${step.exIndex}/${step.exCount}`
-  else if (step.type === 'rest') heading = 'Repos'
+  else if (step.type === 'rest') heading = step.label.includes('Pause') ? 'Pause' : 'Repos'
   else heading = step.label
 
   let main = '', nextLine = ''
@@ -222,7 +279,7 @@ function renderStep(prog, step, idx, total) {
     nextLine = `<div class="next-line">⏭️ Ensuite : <b>${nextWorkName(idx)}</b></div>`
   } else if (step.type === 'rest') {
     const nx = step.nextExId ? EXERCISES[step.nextExId] : null
-    main = `<div class="big-label">⏸️ ${step.label}</div>
+    main = `<div class="big-label">${step.label}</div>
       ${nx ? `<div class="next">Prépare : <b>${nx.name}</b><div class="next-desc">${nx.desc}</div></div>` : ''}`
   } else if (step.type === 'prep') {
     main = `<div class="big-label">${step.label}</div><div class="next">Mets-toi en place 👟</div>`

@@ -1,6 +1,6 @@
 // Service worker — precache l'app shell + images d'exercices → 100% offline.
 // Bump la version pour forcer la mise à jour du cache.
-const CACHE = 'sport-timer-v3'
+const CACHE = 'sport-timer-v4'
 const ASSETS = [
   './',
   './index.html',

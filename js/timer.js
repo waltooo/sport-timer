@@ -3,15 +3,20 @@ import { EXERCISES } from './data.js'
 
 // Transforme un programme en liste plate d'étapes chronométrées.
 // Types : 'prep' | 'info' | 'work' | 'rest'
-export function buildSequence(prog) {
+// opts.blocks = indices des blocs à inclure (défaut = tous → muscu/HIIT seul possible).
+export function buildSequence(prog, opts = {}) {
   const steps = []
+  const pause = prog.pause ?? 60
+  const idx = opts.blocks ?? prog.blocks.map((_, i) => i)
+  const blocks = idx.map((i) => prog.blocks[i]).filter(Boolean)
+
   steps.push({ type: 'prep', label: 'Prêt ?', duration: 10 })
 
   if (prog.warmup) {
     steps.push({ type: 'info', label: 'Échauffement', text: prog.warmup, duration: 300 })
   }
 
-  prog.blocks.forEach((block) => {
+  blocks.forEach((block, bIdx) => {
     for (let r = 1; r <= block.rounds; r++) {
       block.exercises.forEach((exId, i) => {
         steps.push({
@@ -30,6 +35,10 @@ export function buildSequence(prog) {
           })
         }
       })
+    }
+    // Pause entre deux blocs (ex. entre muscu et HIIT), pas après le dernier
+    if (bIdx < blocks.length - 1 && pause > 0) {
+      steps.push({ type: 'rest', label: '⏸️ Pause', duration: pause, nextExId: blocks[bIdx + 1].exercises[0] })
     }
   })
 
