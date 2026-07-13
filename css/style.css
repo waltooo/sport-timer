@@ -1,0 +1,79 @@
+:root {
+  --accent: #0ea5e9;
+  --bg: #0f172a;
+  --bg2: #1e293b;
+  --fg: #f1f5f9;
+  --muted: #94a3b8;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg); color: var(--fg);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#app { max-width: 560px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; }
+
+/* ---------- Accueil ---------- */
+.home-head { padding: 28px 20px 8px; }
+.home-head h1 { font-size: 1.7rem; }
+.tagline { color: var(--muted); margin-top: 6px; font-size: .95rem; }
+.cards { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; flex: 1; }
+.card {
+  display: flex; align-items: center; gap: 14px; text-align: left;
+  background: var(--bg2); color: var(--fg); border: none; border-left: 5px solid var(--c);
+  border-radius: 14px; padding: 16px; cursor: pointer; font: inherit;
+  transition: transform .08s ease, background .15s ease;
+}
+.card:active { transform: scale(.98); background: #263449; }
+.card-emoji { font-size: 1.9rem; }
+.card-body { flex: 1; }
+.card-title { font-size: 1.15rem; font-weight: 700; }
+.card-focus { color: var(--muted); font-size: .85rem; margin-top: 2px; }
+.card-dur { color: var(--c); font-weight: 600; font-size: .85rem; }
+.home-foot { padding: 8px 20px 28px; color: var(--muted); font-size: .8rem; }
+.home-foot .knee { margin-top: 6px; color: #fbbf24; }
+
+/* ---------- Session ---------- */
+.session { flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+.progress { height: 6px; background: var(--bg2); }
+.progress-bar { height: 100%; background: var(--accent); transition: width .4s ease; }
+.session-main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 20px; gap: 10px; }
+.sub { color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; }
+.ex-illus { width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,.08);
+  display: flex; align-items: center; justify-content: center; }
+.ex-illus span { font-size: 3rem; font-weight: 800; color: var(--accent); }
+.ex-name { font-size: 2rem; font-weight: 800; line-height: 1.1; }
+.ex-muscle { color: var(--accent); font-weight: 600; }
+.ex-desc { color: var(--fg); opacity: .85; max-width: 30ch; font-size: 1rem; line-height: 1.4; }
+.big-label { font-size: 2rem; font-weight: 800; }
+.next { color: var(--muted); font-size: 1.05rem; }
+.next b { color: var(--fg); }
+.next-desc { font-size: .9rem; opacity: .8; margin-top: 6px; max-width: 32ch; }
+.info-text { color: var(--fg); opacity: .9; max-width: 34ch; line-height: 1.5; }
+
+.timer { font-size: 5rem; font-weight: 800; font-variant-numeric: tabular-nums; padding: 4px 0 14px; }
+.timer.pulse { color: var(--accent); transform: scale(1.06); transition: transform .1s; }
+
+/* Couleurs de phase */
+.ph-work .progress-bar, .ph-work .timer { color: #22c55e; }
+.ph-work .progress-bar { background: #22c55e; }
+.ph-rest .timer { color: #38bdf8; }
+.ph-rest .progress-bar { background: #38bdf8; }
+.ph-prep .timer, .ph-info .timer { color: var(--accent); }
+
+.controls { display: flex; gap: 8px; padding: 14px 16px calc(20px + env(safe-area-inset-bottom)); }
+.controls button {
+  flex: 1; background: var(--bg2); color: var(--fg); border: none; border-radius: 12px;
+  padding: 16px 8px; font-size: 1rem; cursor: pointer; font: inherit; font-weight: 600;
+}
+.controls button:active { background: #334155; }
+.controls .primary { flex: 2; background: var(--accent); color: #06121f; font-weight: 700; }
+
+/* ---------- Done ---------- */
+.done { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 30px; min-height: 100vh; }
+.done-emoji { font-size: 4rem; }
+.done h2 { font-size: 1.6rem; }
+.done p { color: var(--muted); }
+.done-tip { font-size: .9rem; }
+.primary.big { background: var(--accent); color: #06121f; border: none; border-radius: 12px; padding: 16px 28px; font-size: 1.05rem; font-weight: 700; cursor: pointer; margin-top: 12px; }
