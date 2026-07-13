@@ -1,26 +1,27 @@
 import { PROGRAMMES, PROGRAMME_ORDER, EXERCISES } from './data.js'
 import { buildSequence, Engine } from './timer.js'
+import { EX_FRAMES } from './ex-images.js'
 
 const app = document.getElementById('app')
 let engine = null
+let currentSteps = []
+let gifTimer = null
 let wakeLock = null
 
-// ---------- Audio (bips WebAudio, pas de fichier) ----------
+// ---------- Audio (bips WebAudio) ----------
 let actx = null
 function beep(freq = 880, dur = 0.12, vol = 0.25) {
   try {
     actx = actx || new (window.AudioContext || window.webkitAudioContext)()
     const o = actx.createOscillator(), g = actx.createGain()
-    o.frequency.value = freq; o.type = 'sine'
-    g.gain.value = vol
-    o.connect(g); g.connect(actx.destination)
-    o.start()
+    o.frequency.value = freq; o.type = 'sine'; g.gain.value = vol
+    o.connect(g); g.connect(actx.destination); o.start()
     g.gain.exponentialRampToValueAtTime(0.0001, actx.currentTime + dur)
     o.stop(actx.currentTime + dur)
-  } catch (e) { /* audio non dispo */ }
+  } catch (e) {}
 }
 
-// ---------- Wake lock (garde l'écran allumé pendant la séance) ----------
+// ---------- Wake lock ----------
 async function requestWakeLock() {
   try { if ('wakeLock' in navigator) wakeLock = await navigator.wakeLock.request('screen') } catch (e) {}
 }
@@ -28,16 +29,41 @@ function releaseWakeLock() { try { wakeLock && wakeLock.release(); wakeLock = nu
 
 // ---------- Helpers ----------
 const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-function exImage(exId) {
-  // Emplacement image optionnel : icons/ex/<id>.gif|png (ajouté plus tard).
-  // Fallback : pastille avec l'initiale du muscle.
+
+function clearGif() { if (gifTimer) { clearInterval(gifTimer); gifTimer = null } }
+
+function exVisual(exId) {
   const ex = EXERCISES[exId]
-  return `<div class="ex-illus" aria-hidden="true"><span>${ex.name.slice(0, 1)}</span></div>`
+  if (EX_FRAMES[exId]) {
+    return `<div class="ex-illus"><img id="ex-gif" src="./icons/ex/${exId}-0.jpg" alt="${ex.name}"></div>`
+  }
+  return `<div class="ex-illus letter" aria-hidden="true"><span>${ex.name.slice(0, 1)}</span></div>`
+}
+function animateGif(exId) {
+  clearGif()
+  const frames = EX_FRAMES[exId]
+  if (!frames || frames < 2) return
+  let f = 0
+  gifTimer = setInterval(() => {
+    const img = document.getElementById('ex-gif')
+    if (!img) return clearGif()
+    f = (f + 1) % frames
+    img.src = `./icons/ex/${exId}-${f}.jpg`
+  }, 700)
 }
 
-// ---------- Écran d'accueil ----------
+// exercice de travail qui suit l'étape idx (saute les repos)
+function nextWorkName(idx) {
+  for (let j = idx + 1; j < currentSteps.length; j++) {
+    if (currentSteps[j].type === 'work') return EXERCISES[currentSteps[j].exId].name
+    if (currentSteps[j].type === 'info') return currentSteps[j].label
+  }
+  return 'Fin de séance'
+}
+
+// ---------- Accueil ----------
 function renderHome() {
-  releaseWakeLock()
+  clearGif(); releaseWakeLock()
   document.body.style.setProperty('--accent', '#0ea5e9')
   app.innerHTML = `
     <header class="home-head">
@@ -65,14 +91,13 @@ function renderHome() {
     b.addEventListener('click', () => startSession(b.dataset.prog)))
 }
 
-// ---------- Session (chrono) ----------
+// ---------- Session ----------
 function startSession(progId) {
   const prog = PROGRAMMES[progId]
-  const steps = buildSequence(prog)
+  currentSteps = buildSequence(prog)
   document.body.style.setProperty('--accent', prog.color)
   requestWakeLock()
-
-  engine = new Engine(steps, {
+  engine = new Engine(currentSteps, {
     onStep: (step, idx, total) => renderStep(prog, step, idx, total),
     onTick: (rem) => updateTick(rem),
     onDone: () => renderDone(prog),
@@ -80,43 +105,52 @@ function startSession(progId) {
   engine.start()
 }
 
-function phaseClass(type) {
-  return type === 'work' ? 'ph-work' : type === 'rest' ? 'ph-rest'
-    : type === 'prep' ? 'ph-prep' : 'ph-info'
-}
+const phaseClass = (t) => t === 'work' ? 'ph-work' : t === 'rest' ? 'ph-rest' : t === 'prep' ? 'ph-prep' : 'ph-info'
 
 function renderStep(prog, step, idx, total) {
+  clearGif()
   const pct = Math.round((idx / (total - 1)) * 100)
-  let main = ''
+
+  // Bandeau du haut : tour / exo (gros), + bouton menu bien visible
+  let heading = prog.name
+  if (step.type === 'work') heading = `${step.block} · Tour ${step.round}/${step.rounds} · Exo ${step.exIndex}/${step.exCount}`
+  else if (step.type === 'rest') heading = 'Repos'
+  else heading = step.label
+
+  let main = '', nextLine = ''
   if (step.type === 'work') {
     const ex = EXERCISES[step.exId]
-    main = `
-      <div class="sub">${step.block} · tour ${step.round}/${step.rounds} · exo ${step.exIndex}/${step.exCount}</div>
-      ${exImage(step.exId)}
+    main = `${exVisual(step.exId)}
       <div class="ex-name">${ex.name}</div>
       <div class="ex-muscle">${ex.muscle}</div>
       <div class="ex-desc">${ex.desc}</div>`
+    nextLine = `<div class="next-line">⏭️ Ensuite : <b>${nextWorkName(idx)}</b></div>`
   } else if (step.type === 'rest') {
     const nx = step.nextExId ? EXERCISES[step.nextExId] : null
-    main = `<div class="big-label">${step.label}</div>
-      ${nx ? `<div class="next">⏭️ Ensuite : <b>${nx.name}</b><div class="next-desc">${nx.desc}</div></div>` : ''}`
+    main = `<div class="big-label">⏸️ ${step.label}</div>
+      ${nx ? `<div class="next">Prépare : <b>${nx.name}</b><div class="next-desc">${nx.desc}</div></div>` : ''}`
   } else if (step.type === 'prep') {
     main = `<div class="big-label">${step.label}</div><div class="next">Mets-toi en place 👟</div>`
-  } else { // info (échauffement / retour au calme)
+    nextLine = `<div class="next-line">⏭️ Ensuite : <b>${nextWorkName(idx)}</b></div>`
+  } else {
     main = `<div class="big-label">${step.label}</div><div class="info-text">${step.text}</div>`
   }
 
   app.innerHTML = `
     <div class="session ${phaseClass(step.type)}">
+      <div class="topbar">
+        <div class="heading">${heading}</div>
+        <button id="btn-quit" class="quit">⏹ Menu</button>
+      </div>
       <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
       <div class="session-main">${main}</div>
+      ${nextLine}
       <div class="timer" id="timer">${fmt(step.duration)}</div>
       <div class="controls">
         <button id="btn-prev" title="Précédent">⏮️</button>
         <button id="btn-add" title="+20s">+20s</button>
         <button id="btn-pause" class="primary">⏸️ Pause</button>
         <button id="btn-skip" title="Suivant">⏭️</button>
-        <button id="btn-quit" title="Quitter">✖️</button>
       </div>
     </div>`
 
@@ -127,10 +161,9 @@ function renderStep(prog, step, idx, total) {
   document.getElementById('btn-skip').onclick = () => { beep(600, 0.08); engine.next() }
   document.getElementById('btn-prev').onclick = () => engine.prev()
   document.getElementById('btn-add').onclick = () => engine.addTime(20)
-  document.getElementById('btn-quit').onclick = () => { engine.stop(); renderHome() }
+  document.getElementById('btn-quit').onclick = () => { engine.stop(); clearGif(); renderHome() }
 
-  // Bip de changement d'étape
-  if (step.type === 'work') beep(940, 0.15)
+  if (step.type === 'work') { beep(940, 0.15); animateGif(step.exId) }
   else if (step.type === 'rest') beep(520, 0.15)
 }
 
@@ -138,12 +171,12 @@ function updateTick(rem) {
   const t = document.getElementById('timer')
   if (!t) return
   t.textContent = fmt(rem)
-  if (rem <= 3 && rem > 0) { beep(760, 0.09); t.classList.add('pulse') }
-  else t.classList.remove('pulse')
+  if (rem <= 5 && rem > 0) { t.classList.add('danger'); beep(760, 0.09) }
+  else t.classList.remove('danger')
 }
 
 function renderDone(prog) {
-  releaseWakeLock()
+  clearGif(); releaseWakeLock()
   beep(880, 0.15); setTimeout(() => beep(1180, 0.25), 160)
   document.body.style.setProperty('--accent', '#22c55e')
   app.innerHTML = `
@@ -157,10 +190,9 @@ function renderDone(prog) {
   document.getElementById('btn-home').onclick = renderHome
 }
 
-// ---------- Service worker (offline) ----------
+// ---------- Service worker ----------
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () =>
-    navigator.serviceWorker.register('./sw.js').catch(() => {}))
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}))
 }
 
 renderHome()

@@ -7,8 +7,10 @@ Une petite **PWA installable et 100% offline** qui déroule mes séances de spor
 ## Ce que ça fait
 - 5 programmes : **Haut du corps**, **Bas du corps**, **Tronc**, **Full body**, **Séance du soir**
 - Chrono auto (effort / repos / repos de tour) avec **bips sonores** et **compte à rebours**
-- Chaque exercice affiché avec son **nom, le muscle ciblé et une description** (« comment faire ») — parce que le nom seul ne suffit pas à s'en souvenir
-- Aperçu de l'exercice **suivant** pendant les temps de repos
+- Chaque exercice affiché avec son **nom, le muscle ciblé, une description** (« comment faire ») et une **image animée** de démonstration (2 frames) — parce que le nom seul ne suffit pas à s'en souvenir
+- Aperçu de l'exercice **suivant** (pendant l'effort ET les temps de repos)
+- Compte à rebours qui passe **en rouge dans les 5 dernières secondes**
+- Bouton **Menu** bien visible pour arrêter à tout moment
 - **Offline** (service worker) + **installable** sur le téléphone (PWA)
 - Garde l'écran allumé pendant la séance (Wake Lock)
 - Zéro backend, zéro dépendance, zéro build : du HTML/CSS/JS statique
@@ -42,10 +44,14 @@ scripts/gen-icons.mjs # génération des icônes
 ```
 
 ## Feuille de route
-- [ ] Gifs / images de démonstration par exercice
+- [x] Images de démonstration par exercice (animées, 2 frames) — 25/28 exos couverts
+- [ ] Images pour les 3 exos restants (pike push-ups, chaise au mur, burpees)
 - [ ] Historique des séances (lien avec mon carnet)
 - [ ] Réglage perso des temps effort/repos
 - [ ] Voix (annonce de l'exercice suivant)
 
+## Crédits
+- Images d'exercices : [free-exercise-db](https://github.com/yuhonas/free-exercise-db) — domaine public (Unlicense). Mapping des exercices → images dans le commit d'intégration ; frames dans `icons/ex/`.
+
 ---
-Projet perso, construit en pair-programming avec Claude Code. MIT.
+Projet perso, construit en pair-programming avec Claude Code. Code sous licence MIT.
