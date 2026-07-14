@@ -47,6 +47,13 @@ export function hasCustom(progId) {
   return getCustom(progId) != null
 }
 
+// ---------- Séances personnalisées ----------
+const K_UPROGS = 'st.userprogs'
+export function getUserProgs() { return read(K_UPROGS, {}) }
+export function getUserProg(id) { return getUserProgs()[id] || null }
+export function saveUserProg(p) { const all = getUserProgs(); all[p.id] = p; write(K_UPROGS, all) }
+export function deleteUserProg(id) { const all = getUserProgs(); delete all[id]; write(K_UPROGS, all) }
+
 // ---------- Favoris ----------
 const K_FAVS = 'st.favs'
 export function getFavs() { return read(K_FAVS, []) }

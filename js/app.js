@@ -1,4 +1,4 @@
-import { PROGRAMMES, PROGRAMME_ORDER, EXERCISES } from './data.js'
+import { PROGRAMMES, PROGRAMME_ORDER, EXERCISES, makeUserProg } from './data.js'
 import { buildSequence, Engine } from './timer.js'
 import { EX_FRAMES } from './ex-images.js'
 import { LIBRARY } from './library.js'
@@ -58,12 +58,15 @@ function frDate(iso) {
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 function clearGif() { if (gifTimer) { clearInterval(gifTimer); gifTimer = null } }
 
+const isUserProg = (id) => typeof id === 'string' && id.startsWith('u_')
+
 function normCustom(c) {
   if (!c) return null
   if (Array.isArray(c)) return { blocks: c }
   return c
 }
 function getProgramme(id) {
+  if (isUserProg(id)) return Store.getUserProg(id)
   const base = PROGRAMMES[id]
   const c = normCustom(Store.getCustom(id))
   if (!c) return base
@@ -79,10 +82,25 @@ function getProgramme(id) {
 function effState(id) {
   const p = getProgramme(id)
   return {
+    name: p.name, emoji: p.emoji,
     blocks: p.blocks.map((b) => [...b.exercises]),
     times: p.blocks.map((b) => ({ work: b.work, rest: b.rest, roundRest: b.roundRest })),
     pause: p.pause ?? 60,
   }
+}
+// Carte de programme (défaut ou perso)
+function card(id, p, badges = '') {
+  return `<div class="card" style="--c:${p.color || '#0ea5e9'}">
+    <button class="card-start" data-prog="${id}">
+      <div class="card-emoji">${p.emoji}</div>
+      <div class="card-body">
+        <div class="card-title">${esc(p.name)}${badges}</div>
+        <div class="card-focus">${esc(p.focus || '')}</div>
+      </div>
+      <div class="card-dur">${esc(p.duration || '')}</div>
+    </button>
+    <button class="card-edit" data-edit="${id}" title="Personnaliser">✏️</button>
+  </div>`
 }
 
 function exVisual(exId) {
@@ -136,19 +154,11 @@ function renderHome() {
         const p = PROGRAMMES[id]
         const star = id === nextId ? ' ⭐' : ''
         const custom = Store.hasCustom(id) ? ' <span class="badge">perso</span>' : ''
-        return `<div class="card" style="--c:${p.color}">
-          <button class="card-start" data-prog="${id}">
-            <div class="card-emoji">${p.emoji}</div>
-            <div class="card-body">
-              <div class="card-title">${p.name}${star}${custom}</div>
-              <div class="card-focus">${p.focus}</div>
-            </div>
-            <div class="card-dur">${p.duration}</div>
-          </button>
-          <button class="card-edit" data-edit="${id}" title="Personnaliser">✏️</button>
-        </div>`
+        return card(id, p, star + custom)
       }).join('')}
+      ${Object.values(Store.getUserProgs()).map((p) => card(p.id, p, ' <span class="badge">à moi</span>')).join('')}
     </div>
+    <button class="create-btn" id="create-prog">➕ Créer une séance</button>
     <button class="lib-btn" id="open-lib">📚 Tous les exercices</button>
     <footer class="home-foot">
       <p>Rotation conseillée : A → B → C → D. Séance du soir 1 soir sur 2.</p>
@@ -157,6 +167,31 @@ function renderHome() {
   app.querySelectorAll('.card-start').forEach((b) => b.addEventListener('click', () => startSession(b.dataset.prog)))
   app.querySelectorAll('.card-edit').forEach((b) => b.addEventListener('click', () => renderEditor(b.dataset.edit)))
   document.getElementById('open-lib').onclick = () => renderLibrary()
+  document.getElementById('create-prog').onclick = () => renderCreate()
+}
+
+// ---------- Créer une séance perso ----------
+function renderCreate() {
+  clearGif()
+  document.body.style.setProperty('--accent', '#0ea5e9')
+  app.innerHTML = `
+    <div class="editor">
+      <div class="topbar"><div class="heading">➕ Nouvelle séance</div>
+        <button id="cr-cancel" class="quit" style="background:#475569">← Annuler</button></div>
+      <div class="edit-block">
+        <label class="fld">Nom<input id="cr-name" type="text" maxlength="24" placeholder="Ex : Spéciale vacances"></label>
+        <label class="fld">Emoji<input id="cr-emoji" type="text" maxlength="2" value="🏖️"></label>
+      </div>
+      <div class="edit-foot"><button id="cr-ok" class="primary big" style="width:100%">Créer et personnaliser →</button></div>
+    </div>`
+  document.getElementById('cr-cancel').onclick = renderHome
+  document.getElementById('cr-ok').onclick = () => {
+    const name = document.getElementById('cr-name').value.trim() || 'Ma séance'
+    const emoji = document.getElementById('cr-emoji').value.trim() || '🏖️'
+    const id = 'u_' + Date.now()
+    Store.saveUserProg(makeUserProg(id, name, emoji))
+    renderEditor(id)
+  }
 }
 
 // ---------- Bibliothèque d'exercices + favoris ----------
@@ -253,10 +288,23 @@ function optionList(selectedId) {
   if (selectedId && !list.some((e) => e.id === selectedId)) list = [{ id: selectedId, name: getEx(selectedId).name }, ...list]
   return list.map((e) => `<option value="${esc(e.id)}"${e.id === selectedId ? ' selected' : ''}>${esc(e.name)}</option>`).join('')
 }
-function saveEdit(progId) { Store.setCustom(progId, editState) }
+function saveEdit(progId) {
+  if (isUserProg(progId)) {
+    const base = Store.getUserProg(progId) || getProgramme(progId)
+    const blocks = base.blocks.map((b, i) => ({
+      ...b,
+      exercises: editState.blocks[i],
+      work: editState.times[i].work, rest: editState.times[i].rest, roundRest: editState.times[i].roundRest,
+    }))
+    Store.saveUserProg({ ...base, name: editState.name, emoji: editState.emoji, blocks, pause: editState.pause })
+  } else {
+    Store.setCustom(progId, { blocks: editState.blocks, times: editState.times, pause: editState.pause })
+  }
+}
 
 function renderEditor(progId) {
-  const prog = PROGRAMMES[progId]
+  const prog = getProgramme(progId)
+  const isUser = isUserProg(progId)
   if (!editState) editState = effState(progId)
   document.body.style.setProperty('--accent', prog.color)
 
@@ -293,10 +341,17 @@ function renderEditor(progId) {
         <button id="ed-done" class="quit" style="background:#22c55e">✓ OK</button>
       </div>
       <p class="edit-hint">Change les exercices et les temps. Astuce : ❤️ des exos dans « Tous les exercices » pour les retrouver ici. Sauvegarde auto.</p>
+      ${isUser ? `<div class="edit-block"><h3>Séance</h3>
+        <div class="edit-times">
+          <label style="flex:2">Nom<input type="text" id="u-name" maxlength="24" value="${esc(editState.name)}" style="width:100%;text-align:left"></label>
+          <label>Emoji<input type="text" id="u-emoji" maxlength="2" value="${esc(editState.emoji)}" style="width:2.5em"></label>
+        </div></div>` : ''}
       ${blocksHtml}
       ${pauseHtml}
       <div class="edit-foot">
-        <button id="ed-reset" class="reset-btn">↺ Réinitialiser ce programme</button>
+        ${isUser
+          ? `<button id="ed-delete" class="reset-btn" style="color:#ef4444;border-color:#ef4444">🗑 Supprimer cette séance</button>`
+          : `<button id="ed-reset" class="reset-btn">↺ Réinitialiser ce programme</button>`}
       </div>
     </div>`
 
@@ -319,8 +374,17 @@ function renderEditor(progId) {
     else editState.times[+inp.dataset.b][inp.dataset.t] = v
     saveEdit(progId)
   }))
-  document.getElementById('ed-reset').onclick = () => {
-    Store.resetCustom(progId); editState = effState(progId); renderEditor(progId)
+  if (isUser) {
+    const nm = document.getElementById('u-name'), em = document.getElementById('u-emoji')
+    nm.addEventListener('change', () => { editState.name = nm.value.trim() || 'Ma séance'; saveEdit(progId) })
+    em.addEventListener('change', () => { editState.emoji = em.value.trim() || '🏖️'; saveEdit(progId) })
+    document.getElementById('ed-delete').onclick = () => {
+      if (confirm('Supprimer cette séance ?')) { Store.deleteUserProg(progId); editState = null; renderHome() }
+    }
+  } else {
+    document.getElementById('ed-reset').onclick = () => {
+      Store.resetCustom(progId); editState = effState(progId); renderEditor(progId)
+    }
   }
   document.getElementById('ed-done').onclick = () => { editState = null; renderHome() }
 }

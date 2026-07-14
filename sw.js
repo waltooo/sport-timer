@@ -1,6 +1,6 @@
 // Service worker — precache l'app shell + images core → offline.
 // Les images de la bibliothèque étendue (distantes) sont mises en cache à la volée.
-const CACHE = 'sport-timer-v5'
+const CACHE = 'sport-timer-v6'
 const ASSETS = [
   './',
   './index.html',

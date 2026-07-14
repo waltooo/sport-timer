@@ -107,3 +107,17 @@ export const PROGRAMMES = {
 }
 
 export const PROGRAMME_ORDER = ['A', 'B', 'C', 'D', 'soir']
+
+// Fabrique une séance personnalisée (créée par l'utilisateur)
+export function makeUserProg(id, name, emoji) {
+  return {
+    id, name: name || 'Ma séance', emoji: emoji || '🏖️', color: '#0ea5e9',
+    focus: 'Séance personnalisée', duration: 'perso', user: true,
+    warmup: WARMUP_DEFAULT, pause: 60,
+    blocks: [
+      { title: 'Circuit', rounds: 3, work: 40, rest: 20, roundRest: 45,
+        exercises: ['pompes', 'squats', 'planche'] },
+    ],
+    cooldown: COOLDOWN_DEFAULT,
+  }
+}
