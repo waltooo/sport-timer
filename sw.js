@@ -1,6 +1,6 @@
-// Service worker — precache l'app shell + images d'exercices → 100% offline.
-// Bump la version pour forcer la mise à jour du cache.
-const CACHE = 'sport-timer-v4'
+// Service worker — precache l'app shell + images core → offline.
+// Les images de la bibliothèque étendue (distantes) sont mises en cache à la volée.
+const CACHE = 'sport-timer-v5'
 const ASSETS = [
   './',
   './index.html',
@@ -9,6 +9,7 @@ const ASSETS = [
   './js/timer.js',
   './js/data.js',
   './js/ex-images.js',
+  './js/library.js',
   './js/store.js',
   './manifest.webmanifest',
   './icons/icon.svg',

@@ -46,3 +46,15 @@ export function resetCustom(progId) {
 export function hasCustom(progId) {
   return getCustom(progId) != null
 }
+
+// ---------- Favoris ----------
+const K_FAVS = 'st.favs'
+export function getFavs() { return read(K_FAVS, []) }
+export function isFav(id) { return getFavs().includes(id) }
+export function toggleFav(id) {
+  const f = getFavs()
+  const i = f.indexOf(id)
+  if (i >= 0) f.splice(i, 1); else f.push(id)
+  write(K_FAVS, f)
+  return i < 0 // true si désormais favori
+}

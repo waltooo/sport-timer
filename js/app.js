@@ -1,17 +1,32 @@
 import { PROGRAMMES, PROGRAMME_ORDER, EXERCISES } from './data.js'
 import { buildSequence, Engine } from './timer.js'
 import { EX_FRAMES } from './ex-images.js'
+import { LIBRARY } from './library.js'
 import * as Store from './store.js'
+
+export const VERSION = '0.4.0'
 
 const app = document.getElementById('app')
 let engine = null
 let currentSteps = []
 let gifTimer = null
 let wakeLock = null
-let editState = null // { blocks:[[exId..]], times:[{work,rest,roundRest}], pause }
+let editState = null
 
-const ALL_EX = Object.entries(EXERCISES).map(([id, e]) => ({ id, name: e.name }))
-  .sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+// ---------- Exercices : core (FR, images offline) + bibliothèque (distante) ----------
+function getEx(id) { return EXERCISES[id] || LIBRARY[id] || { name: id, muscle: '', desc: '' } }
+function imgUrls(id) {
+  if (EX_FRAMES[id]) return Array.from({ length: EX_FRAMES[id] }, (_, f) => `./icons/ex/${id}-${f}.jpg`)
+  if (LIBRARY[id]) return LIBRARY[id].img || []
+  return []
+}
+// Liste pour les sélecteurs de l'éditeur : core + favoris (sinon 500 options injouables)
+function pickerList() {
+  const core = Object.keys(EXERCISES)
+  const favs = Store.getFavs().filter((id) => LIBRARY[id])
+  const ids = [...new Set([...core, ...favs])]
+  return ids.map((id) => ({ id, name: getEx(id).name })).sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+}
 
 // ---------- Audio ----------
 let actx = null
@@ -40,15 +55,14 @@ function frDate(iso) {
   const [y, m, d] = iso.split('-')
   return `${d}/${m}/${y.slice(2)}`
 }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 function clearGif() { if (gifTimer) { clearInterval(gifTimer); gifTimer = null } }
 
-// Normalise l'ancien format (tableau) vers { blocks, times, pause }
 function normCustom(c) {
   if (!c) return null
   if (Array.isArray(c)) return { blocks: c }
   return c
 }
-// Programme effectif = défaut + personnalisation locale (exos + temps + pause)
 function getProgramme(id) {
   const base = PROGRAMMES[id]
   const c = normCustom(Store.getCustom(id))
@@ -72,25 +86,25 @@ function effState(id) {
 }
 
 function exVisual(exId) {
-  const ex = EXERCISES[exId]
-  if (EX_FRAMES[exId]) return `<div class="ex-illus"><img id="ex-gif" src="./icons/ex/${exId}-0.jpg" alt="${ex.name}"></div>`
-  return `<div class="ex-illus letter" aria-hidden="true"><span>${ex.name.slice(0, 1)}</span></div>`
+  const urls = imgUrls(exId)
+  if (urls.length) return `<div class="ex-illus"><img id="ex-gif" src="${urls[0]}" alt="${esc(getEx(exId).name)}"></div>`
+  return `<div class="ex-illus letter" aria-hidden="true"><span>${esc(getEx(exId).name.slice(0, 1))}</span></div>`
 }
 function animateGif(exId) {
   clearGif()
-  const frames = EX_FRAMES[exId]
-  if (!frames || frames < 2) return
+  const urls = imgUrls(exId)
+  if (urls.length < 2) return
   let f = 0
   gifTimer = setInterval(() => {
     const img = document.getElementById('ex-gif')
     if (!img) return clearGif()
-    f = (f + 1) % frames
-    img.src = `./icons/ex/${exId}-${f}.jpg`
+    f = (f + 1) % urls.length
+    img.src = urls[f]
   }, 700)
 }
 function nextWorkName(idx) {
   for (let j = idx + 1; j < currentSteps.length; j++) {
-    if (currentSteps[j].type === 'work') return EXERCISES[currentSteps[j].exId].name
+    if (currentSteps[j].type === 'work') return getEx(currentSteps[j].exId).name
     if (currentSteps[j].type === 'info') return currentSteps[j].label
   }
   return 'Fin de séance'
@@ -135,11 +149,76 @@ function renderHome() {
         </div>`
       }).join('')}
     </div>
+    <button class="lib-btn" id="open-lib">📚 Tous les exercices</button>
     <footer class="home-foot">
       <p>Rotation conseillée : A → B → C → D. Séance du soir 1 soir sur 2.</p>
+      <p class="version">Sport Timer v${VERSION}</p>
     </footer>`
   app.querySelectorAll('.card-start').forEach((b) => b.addEventListener('click', () => startSession(b.dataset.prog)))
   app.querySelectorAll('.card-edit').forEach((b) => b.addEventListener('click', () => renderEditor(b.dataset.edit)))
+  document.getElementById('open-lib').onclick = () => renderLibrary()
+}
+
+// ---------- Bibliothèque d'exercices + favoris ----------
+function allExercises() {
+  const core = Object.keys(EXERCISES).map((id) => ({ id, ...getEx(id), tag: 'Mon exo' }))
+  const lib = Object.keys(LIBRARY).map((id) => ({ id, ...LIBRARY[id], tag: LIBRARY[id].equipment }))
+  return core.concat(lib)
+}
+let libFilter = { q: '', muscle: '', favOnly: false }
+
+function libRows() {
+  const q = libFilter.q.trim().toLowerCase()
+  return allExercises().filter((e) => {
+    if (libFilter.favOnly && !Store.isFav(e.id)) return false
+    if (libFilter.muscle && !(e.muscle || '').toLowerCase().includes(libFilter.muscle.toLowerCase())) return false
+    if (q && !(e.name.toLowerCase().includes(q) || (e.muscle || '').toLowerCase().includes(q))) return false
+    return true
+  })
+}
+function renderLibList() {
+  const box = document.getElementById('lib-list')
+  if (!box) return
+  const rows = libRows()
+  box.innerHTML = `<div class="lib-count">${rows.length} exercice(s)</div>` + rows.slice(0, 600).map((e) => {
+    const url = imgUrls(e.id)[0]
+    const fav = Store.isFav(e.id)
+    return `<div class="lib-item">
+      <div class="lib-thumb">${url ? `<img loading="lazy" src="${url}" alt="">` : `<span>${esc(e.name.slice(0, 1))}</span>`}</div>
+      <div class="lib-info"><div class="lib-name">${esc(e.name)}</div><div class="lib-meta">${esc(e.muscle || '')} · ${esc(e.tag)}</div></div>
+      <button class="fav-btn ${fav ? 'on' : ''}" data-fav="${esc(e.id)}">${fav ? '❤️' : '🤍'}</button>
+    </div>`
+  }).join('')
+  box.querySelectorAll('[data-fav]').forEach((b) => b.addEventListener('click', () => {
+    const now = Store.toggleFav(b.dataset.fav)
+    b.classList.toggle('on', now); b.textContent = now ? '❤️' : '🤍'
+    if (libFilter.favOnly && !now) b.closest('.lib-item').remove()
+  }))
+}
+function renderLibrary() {
+  clearGif()
+  document.body.style.setProperty('--accent', '#0ea5e9')
+  const muscles = [...new Set(allExercises().map((e) => e.muscle).filter(Boolean))].sort()
+  app.innerHTML = `
+    <div class="library">
+      <div class="topbar"><div class="heading">📚 Tous les exercices</div>
+        <button id="lib-back" class="quit" style="background:#475569">← Retour</button></div>
+      <div class="lib-controls">
+        <input id="lib-q" type="search" placeholder="Rechercher…" value="${esc(libFilter.q)}">
+        <select id="lib-muscle"><option value="">Tous muscles</option>${muscles.map((m) => `<option value="${esc(m)}"${m === libFilter.muscle ? ' selected' : ''}>${esc(m)}</option>`).join('')}</select>
+        <button id="lib-fav" class="fav-filter ${libFilter.favOnly ? 'on' : ''}">❤️ Favoris</button>
+      </div>
+      <p class="edit-hint">Mets ❤️ tes exos préférés : ils deviennent dispo dans l'éditeur des programmes ✏️.</p>
+      <div id="lib-list"></div>
+    </div>`
+  renderLibList()
+  document.getElementById('lib-back').onclick = renderHome
+  const q = document.getElementById('lib-q')
+  q.addEventListener('input', () => { libFilter.q = q.value; renderLibList() })
+  document.getElementById('lib-muscle').addEventListener('change', (e) => { libFilter.muscle = e.target.value; renderLibList() })
+  document.getElementById('lib-fav').addEventListener('click', (e) => {
+    libFilter.favOnly = !libFilter.favOnly; e.target.classList.toggle('on', libFilter.favOnly); renderLibList()
+  })
 }
 
 // ---------- Choix muscu / HIIT / complète ----------
@@ -170,7 +249,9 @@ function renderChooser(progId, prog) {
 
 // ---------- Éditeur ----------
 function optionList(selectedId) {
-  return ALL_EX.map((e) => `<option value="${e.id}"${e.id === selectedId ? ' selected' : ''}>${e.name}</option>`).join('')
+  let list = pickerList()
+  if (selectedId && !list.some((e) => e.id === selectedId)) list = [{ id: selectedId, name: getEx(selectedId).name }, ...list]
+  return list.map((e) => `<option value="${esc(e.id)}"${e.id === selectedId ? ' selected' : ''}>${esc(e.name)}</option>`).join('')
 }
 function saveEdit(progId) { Store.setCustom(progId, editState) }
 
@@ -211,7 +292,7 @@ function renderEditor(progId) {
         <div class="heading">✏️ Personnaliser — ${prog.emoji} ${prog.name}</div>
         <button id="ed-done" class="quit" style="background:#22c55e">✓ OK</button>
       </div>
-      <p class="edit-hint">Change les exercices et les temps (en secondes). Sauvegarde automatique sur ton appareil.</p>
+      <p class="edit-hint">Change les exercices et les temps. Astuce : ❤️ des exos dans « Tous les exercices » pour les retrouver ici. Sauvegarde auto.</p>
       ${blocksHtml}
       ${pauseHtml}
       <div class="edit-foot">
@@ -231,7 +312,6 @@ function renderEditor(progId) {
     if (!s.value) return
     editState.blocks[+s.dataset.add].push(s.value); saveEdit(progId); renderEditor(progId)
   }))
-  // Temps : mise à jour sans re-render (pour ne pas perdre le focus)
   app.querySelectorAll('input.tnum').forEach((inp) => inp.addEventListener('change', () => {
     const v = Math.max(0, Math.min(600, parseInt(inp.value, 10) || 0))
     inp.value = v
@@ -271,21 +351,21 @@ function renderStep(prog, step, idx, total) {
 
   let main = '', nextLine = ''
   if (step.type === 'work') {
-    const ex = EXERCISES[step.exId]
+    const ex = getEx(step.exId)
     main = `${exVisual(step.exId)}
-      <div class="ex-name">${ex.name}</div>
-      <div class="ex-muscle">${ex.muscle}</div>
-      <div class="ex-desc">${ex.desc}</div>`
-    nextLine = `<div class="next-line">⏭️ Ensuite : <b>${nextWorkName(idx)}</b></div>`
+      <div class="ex-name">${esc(ex.name)}</div>
+      <div class="ex-muscle">${esc(ex.muscle || '')}</div>
+      <div class="ex-desc">${esc(ex.desc || '')}</div>`
+    nextLine = `<div class="next-line">⏭️ Ensuite : <b>${esc(nextWorkName(idx))}</b></div>`
   } else if (step.type === 'rest') {
-    const nx = step.nextExId ? EXERCISES[step.nextExId] : null
+    const nx = step.nextExId ? getEx(step.nextExId) : null
     main = `<div class="big-label">${step.label}</div>
-      ${nx ? `<div class="next">Prépare : <b>${nx.name}</b><div class="next-desc">${nx.desc}</div></div>` : ''}`
+      ${nx ? `<div class="next">Prépare : <b>${esc(nx.name)}</b><div class="next-desc">${esc(nx.desc || '')}</div></div>` : ''}`
   } else if (step.type === 'prep') {
     main = `<div class="big-label">${step.label}</div><div class="next">Mets-toi en place 👟</div>`
-    nextLine = `<div class="next-line">⏭️ Ensuite : <b>${nextWorkName(idx)}</b></div>`
+    nextLine = `<div class="next-line">⏭️ Ensuite : <b>${esc(nextWorkName(idx))}</b></div>`
   } else {
-    main = `<div class="big-label">${step.label}</div><div class="info-text">${step.text}</div>`
+    main = `<div class="big-label">${step.label}</div><div class="info-text">${esc(step.text)}</div>`
   }
 
   app.innerHTML = `

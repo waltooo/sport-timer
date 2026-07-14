@@ -67,7 +67,26 @@ body {
 .choice:active { background: #263449; }
 .primary-choice { background: var(--accent); color: #06121f; border-left-color: #06121f; }
 .primary-choice small { color: #06121faa; }
+.lib-btn { margin: 0 20px 12px; background: var(--bg2); color: var(--fg); border: 1px dashed #475569; border-radius: 12px; padding: 14px; font: inherit; font-weight: 600; cursor: pointer; }
+.lib-btn:active { background: #263449; }
 .home-foot { padding: 8px 20px 28px; color: var(--muted); font-size: .8rem; }
+.version { margin-top: 8px; opacity: .6; font-size: .72rem; }
+
+/* Bibliothèque */
+.library { padding-bottom: 30px; }
+.lib-controls { display: flex; gap: 8px; padding: 4px 16px 6px; flex-wrap: wrap; }
+.lib-controls input, .lib-controls select { flex: 1; min-width: 120px; background: #0b1220; color: var(--fg); border: 1px solid #334155; border-radius: 8px; padding: 10px; font: inherit; }
+.fav-filter { background: transparent; color: var(--muted); border: 1px solid #334155; border-radius: 8px; padding: 10px 12px; font: inherit; cursor: pointer; }
+.fav-filter.on { border-color: #ef4444; color: #fff; }
+.lib-count { color: var(--muted); font-size: .8rem; padding: 4px 16px; }
+.lib-item { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,.05); }
+.lib-thumb { width: 56px; height: 56px; border-radius: 10px; overflow: hidden; background: #fff; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.lib-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.lib-thumb span { color: #0f172a; font-weight: 800; font-size: 1.4rem; }
+.lib-info { flex: 1; min-width: 0; }
+.lib-name { font-weight: 600; }
+.lib-meta { color: var(--muted); font-size: .8rem; }
+.fav-btn { background: transparent; border: none; font-size: 1.4rem; cursor: pointer; padding: 6px; }
 .home-foot .knee { margin-top: 6px; color: #fbbf24; }
 
 /* ---------- Session ---------- */
