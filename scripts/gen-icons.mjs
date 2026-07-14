@@ -3,9 +3,9 @@
 import { deflateSync } from 'node:zlib'
 import { writeFileSync } from 'node:fs'
 
-const BG = [15, 23, 42, 255]       // #0f172a
-const ACCENT = [14, 165, 233, 255] // #0ea5e9
-const GREEN = [34, 197, 94, 255]   // #22c55e
+const BG = [21, 21, 21, 255]       // #151515 (thème Activitar)
+const ACCENT = [228, 56, 28, 255]  // #e4381C (rouge-orange)
+const GREEN = [255, 202, 4, 255]   // #ffca04 (or)
 
 function draw(size) {
   const s = size / 512

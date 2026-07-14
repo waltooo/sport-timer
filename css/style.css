@@ -1,19 +1,27 @@
 :root {
-  --accent: #0ea5e9;
-  --bg: #0f172a;
-  --bg2: #1e293b;
-  --fg: #f1f5f9;
-  --muted: #94a3b8;
+  --accent: #e4381C;   /* thème Activitar : rouge-orange */
+  --accent2: #e16521;  /* orange (dégradé) */
+  --grad: linear-gradient(45deg, #e16521, #e4381C);
+  --bg: #151515;
+  --bg2: #212121;
+  --bg3: #2d2d2d;
+  --fg: #ffffff;
+  --muted: #8f8fa8;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { height: 100%; }
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Nunito Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   background: var(--bg); color: var(--fg);
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   touch-action: manipulation; /* supprime le zoom double-tap */
   -webkit-text-size-adjust: 100%;
 }
+/* Titres facon Activitar (Oswald) */
+h1, h2, h3, .heading, .card-title, .ex-name, .big-label, .done h2, .home-head h1 {
+  font-family: "Oswald", system-ui, sans-serif; letter-spacing: .02em; text-transform: uppercase;
+}
+.timer { font-family: "Oswald", system-ui, sans-serif; }
 #app { max-width: 560px; margin: 0 auto; min-height: 100%; display: flex; flex-direction: column; }
 
 /* ---------- Accueil ---------- */
@@ -29,9 +37,9 @@ body {
 .cards { display: flex; flex-direction: column; gap: 12px; padding: 16px 20px; flex: 1; }
 .card { display: flex; align-items: stretch; background: var(--bg2); border-left: 5px solid var(--c); border-radius: 14px; overflow: hidden; }
 .card-start { flex: 1; display: flex; align-items: center; gap: 14px; text-align: left; background: transparent; color: var(--fg); border: none; padding: 16px; cursor: pointer; font: inherit; }
-.card-start:active { background: #263449; }
+.card-start:active { background: #2a2a2a; }
 .card-edit { background: transparent; border: none; border-left: 1px solid rgba(255,255,255,.08); color: var(--muted); font-size: 1.2rem; padding: 0 18px; cursor: pointer; }
-.card-edit:active { background: #263449; }
+.card-edit:active { background: #2a2a2a; }
 .card-emoji { font-size: 1.9rem; }
 .card-body { flex: 1; }
 .card-title { font-size: 1.15rem; font-weight: 700; }
@@ -46,7 +54,7 @@ body {
 .edit-block h3 { font-size: 1rem; margin-bottom: 8px; }
 .edit-block h3 small { color: var(--muted); font-weight: 400; }
 .edit-row { display: flex; gap: 8px; margin-bottom: 8px; }
-.edit-row select, .edit-add select { flex: 1; background: #0b1220; color: var(--fg); border: 1px solid #334155; border-radius: 8px; padding: 10px; font: inherit; }
+.edit-row select, .edit-add select { flex: 1; background: #2d2d2d; color: var(--fg); border: 1px solid #3a3a3a; border-radius: 8px; padding: 10px; font: inherit; }
 .mini { border: none; border-radius: 8px; padding: 0 14px; font: inherit; cursor: pointer; }
 .danger-btn { background: #ef4444; color: #fff; font-weight: 700; }
 .danger-btn:disabled { background: #475569; opacity: .5; }
@@ -56,7 +64,7 @@ body {
 
 /* Temps éditables */
 .edit-times { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-.edit-times label { flex: 1; min-width: 90px; display: flex; align-items: center; gap: 4px; font-size: .8rem; color: var(--muted); background: #0b1220; border: 1px solid #334155; border-radius: 8px; padding: 6px 8px; }
+.edit-times label { flex: 1; min-width: 90px; display: flex; align-items: center; gap: 4px; font-size: .8rem; color: var(--muted); background: #2d2d2d; border: 1px solid #3a3a3a; border-radius: 8px; padding: 6px 8px; }
 .edit-times input.tnum { width: 3.2em; background: transparent; color: var(--fg); border: none; font: inherit; font-weight: 700; font-size: 1rem; text-align: right; -moz-appearance: textfield; }
 .edit-times input.tnum::-webkit-outer-spin-button, .edit-times input.tnum::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -64,23 +72,23 @@ body {
 .chooser { padding: 8px 16px 30px; }
 .choice { display: block; width: 100%; text-align: left; background: var(--bg2); color: var(--fg); border: none; border-left: 5px solid var(--accent); border-radius: 12px; padding: 18px; margin-bottom: 12px; font: inherit; font-size: 1.15rem; font-weight: 700; cursor: pointer; }
 .choice small { display: block; color: var(--muted); font-size: .8rem; font-weight: 400; margin-top: 4px; }
-.choice:active { background: #263449; }
-.primary-choice { background: var(--accent); color: #06121f; border-left-color: #06121f; }
-.primary-choice small { color: #06121faa; }
+.choice:active { background: #2a2a2a; }
+.primary-choice { background: var(--grad); color: #fff; border-left-color: #fff; }
+.primary-choice small { color: #ffffffcc; }
 .lib-btn { margin: 0 20px 12px; background: var(--bg2); color: var(--fg); border: 1px dashed #475569; border-radius: 12px; padding: 14px; font: inherit; font-weight: 600; cursor: pointer; }
-.lib-btn:active { background: #263449; }
-.create-btn { margin: 0 20px 10px; background: var(--accent); color: #06121f; border: none; border-radius: 12px; padding: 14px; font: inherit; font-weight: 700; cursor: pointer; }
+.lib-btn:active { background: #2a2a2a; }
+.create-btn { margin: 0 20px 10px; background: var(--grad); color: #fff; border: none; border-radius: 12px; padding: 14px; font: inherit; font-weight: 700; cursor: pointer; }
 .create-btn:active { filter: brightness(.92); }
 .fld { display: flex; flex-direction: column; gap: 4px; font-size: .8rem; color: var(--muted); margin-bottom: 10px; }
-.fld input { background: #0b1220; color: var(--fg); border: 1px solid #334155; border-radius: 8px; padding: 12px; font: inherit; font-size: 1.05rem; }
+.fld input { background: #2d2d2d; color: var(--fg); border: 1px solid #3a3a3a; border-radius: 8px; padding: 12px; font: inherit; font-size: 1.05rem; }
 .home-foot { padding: 8px 20px 28px; color: var(--muted); font-size: .8rem; }
 .version { margin-top: 8px; opacity: .6; font-size: .72rem; }
 
 /* Bibliothèque */
 .library { padding-bottom: 30px; }
 .lib-controls { display: flex; gap: 8px; padding: 4px 16px 6px; flex-wrap: wrap; }
-.lib-controls input, .lib-controls select { flex: 1; min-width: 120px; background: #0b1220; color: var(--fg); border: 1px solid #334155; border-radius: 8px; padding: 10px; font: inherit; }
-.fav-filter { background: transparent; color: var(--muted); border: 1px solid #334155; border-radius: 8px; padding: 10px 12px; font: inherit; cursor: pointer; }
+.lib-controls input, .lib-controls select { flex: 1; min-width: 120px; background: #2d2d2d; color: var(--fg); border: 1px solid #3a3a3a; border-radius: 8px; padding: 10px; font: inherit; }
+.fav-filter { background: transparent; color: var(--muted); border: 1px solid #3a3a3a; border-radius: 8px; padding: 10px 12px; font: inherit; cursor: pointer; }
 .fav-filter.on { border-color: #ef4444; color: #fff; }
 .lib-count { color: var(--muted); font-size: .8rem; padding: 4px 16px; }
 .lib-item { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,.05); }
@@ -137,8 +145,8 @@ body {
   flex: 1; background: var(--bg2); color: var(--fg); border: none; border-radius: 12px;
   padding: 16px 8px; font-size: 1rem; cursor: pointer; font: inherit; font-weight: 600;
 }
-.controls button:active { background: #334155; }
-.controls .primary { flex: 2; background: var(--accent); color: #06121f; font-weight: 700; }
+.controls button:active { background: #3a3a3a; }
+.controls .primary { flex: 2; background: var(--grad); color: #fff; font-weight: 700; }
 
 /* ---------- Done ---------- */
 .done { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 30px; min-height: 100vh; }
@@ -146,4 +154,4 @@ body {
 .done h2 { font-size: 1.6rem; }
 .done p { color: var(--muted); }
 .done-tip { font-size: .9rem; }
-.primary.big { background: var(--accent); color: #06121f; border: none; border-radius: 12px; padding: 16px 28px; font-size: 1.05rem; font-weight: 700; cursor: pointer; margin-top: 12px; }
+.primary.big { background: var(--grad); color: #fff; border: none; border-radius: 12px; padding: 16px 28px; font-size: 1.05rem; font-weight: 700; cursor: pointer; margin-top: 12px; }

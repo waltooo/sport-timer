@@ -111,7 +111,7 @@ export const PROGRAMME_ORDER = ['A', 'B', 'C', 'D', 'soir']
 // Fabrique une séance personnalisée (créée par l'utilisateur)
 export function makeUserProg(id, name, emoji) {
   return {
-    id, name: name || 'Ma séance', emoji: emoji || '🏖️', color: '#0ea5e9',
+    id, name: name || 'Ma séance', emoji: emoji || '🏖️', color: '#e4381C',
     focus: 'Séance personnalisée', duration: 'perso', user: true,
     warmup: WARMUP_DEFAULT, pause: 60,
     blocks: [

@@ -4,7 +4,7 @@ import { EX_FRAMES } from './ex-images.js'
 import { LIBRARY } from './library.js'
 import * as Store from './store.js'
 
-export const VERSION = '0.5.0'
+export const VERSION = '0.5.1'
 
 const app = document.getElementById('app')
 let engine = null
@@ -90,7 +90,7 @@ function effState(id) {
 }
 // Carte de programme (défaut ou perso)
 function card(id, p, badges = '') {
-  return `<div class="card" style="--c:${p.color || '#0ea5e9'}">
+  return `<div class="card" style="--c:${p.color || '#e4381C'}">
     <button class="card-start" data-prog="${id}">
       <div class="card-emoji">${p.emoji}</div>
       <div class="card-body">
@@ -131,7 +131,7 @@ function nextWorkName(idx) {
 // ---------- Accueil ----------
 function renderHome() {
   clearGif(); releaseWakeLock()
-  document.body.style.setProperty('--accent', '#0ea5e9')
+  document.body.style.setProperty('--accent', '#e4381C')
   const h = Store.getHistory()
   const nextId = Store.nextDaySuggestion()
   const lastDayTxt = h.lastDay
@@ -173,7 +173,7 @@ function renderHome() {
 // ---------- Créer une séance perso ----------
 function renderCreate() {
   clearGif()
-  document.body.style.setProperty('--accent', '#0ea5e9')
+  document.body.style.setProperty('--accent', '#e4381C')
   app.innerHTML = `
     <div class="editor">
       <div class="topbar"><div class="heading">➕ Nouvelle séance</div>
@@ -232,7 +232,7 @@ function renderLibList() {
 }
 function renderLibrary() {
   clearGif()
-  document.body.style.setProperty('--accent', '#0ea5e9')
+  document.body.style.setProperty('--accent', '#e4381C')
   const muscles = [...new Set(allExercises().map((e) => e.muscle).filter(Boolean))].sort()
   app.innerHTML = `
     <div class="library">
