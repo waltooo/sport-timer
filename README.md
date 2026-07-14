@@ -1,57 +1,60 @@
 # 🏋️ Sport Timer
 
-Une petite **PWA installable et 100% offline** qui déroule mes séances de sport (renfo / HIIT) avec un **chrono automatique** et la **description de chaque exercice**.
+A tiny **offline, installable PWA** that runs my workout sessions (strength + HIIT) with an **automatic timer** and a **demo image for every exercise**.
 
-> **D'un besoin à une solution.** Je voulais un timer de séance adapté à *mes* contraintes (genoux fragiles → variantes sans saut, mes 4 programmes haut/bas/tronc/full-body, une routine du soir). Plutôt que de passer des heures à tester des apps payantes qui ne collent jamais tout à fait, j'ai utilisé ce temps pour me construire l'outil sur mesure. Ce repo, c'est le résultat.
+> A personal project: rather than fight with generic fitness apps that never quite fit, I built the tool I actually wanted. Live demo: **https://waltooo.github.io/sport-timer/**
 
-## Ce que ça fait
-- 5 programmes : **Haut du corps**, **Bas du corps**, **Tronc**, **Full body**, **Séance du soir**
-- Chrono auto (effort / repos / repos de tour) avec **bips sonores** et **compte à rebours**
-- Chaque exercice affiché avec son **nom, le muscle ciblé, une description** (« comment faire ») et une **image animée** de démonstration (2 frames) — parce que le nom seul ne suffit pas à s'en souvenir
-- Aperçu de l'exercice **suivant** (pendant l'effort ET les temps de repos)
-- Compte à rebours qui passe **en rouge dans les 5 dernières secondes**
-- Bouton **Menu** bien visible pour arrêter à tout moment
-- **Offline** (service worker) + **installable** sur le téléphone (PWA)
-- Garde l'écran allumé pendant la séance (Wake Lock)
-- Zéro backend, zéro dépendance, zéro build : du HTML/CSS/JS statique
+## Features
 
-## Lancer en local
+- **5 built-in programs** — Upper body, Lower body, Core, Full body, Evening — **plus your own custom sessions**
+- **Automatic timer**: work → rest → round rest → inter-block pause, with beeps and a big countdown that **turns red for the last 5 seconds**
+- Every exercise shows its **name, target muscle, description and an animated demo image**
+- **Preview of the next exercise** during effort and rest
+- Run the **full session** or just the **strength** or **HIIT** block
+- **Editable programs**: swap / remove / add exercises and adjust the times — saved locally
+- **Create your own sessions** (name + emoji), e.g. a "Holiday" routine
+- **Exercise library**: 488 movements, searchable and filterable by muscle, with ❤️ **favorites** (favorites show up in the editor)
+- **Session history** + suggested next program in the rotation
+- **Works offline**, **installable** (PWA), and keeps the screen awake during a session
+- No backend, no dependencies, no build step — plain static HTML/CSS/JS
+
+## Run locally
+
 ```bash
-# n'importe quel serveur statique, ex :
 python3 -m http.server 8000
-# puis ouvrir http://localhost:8000
+# then open http://localhost:8000
 ```
-> Un service worker a besoin de `http(s)://` (pas de `file://`).
+> A service worker needs `http(s)://` (not `file://`).
 
-## Installer sur le téléphone
-Ouvrir l'URL (voir *Pages* ci-dessous) dans le navigateur → menu → **Ajouter à l'écran d'accueil**. L'app fonctionne ensuite sans réseau.
+## Install on your phone
 
-## Personnaliser
-- **Programmes & exercices** : tout est dans [`js/data.js`](js/data.js) (descriptions, muscles, séries, temps). Facile à éditer.
-- **Icônes** : régénérables avec `node scripts/gen-icons.mjs` (encodeur PNG maison, sans dépendance).
-- **Images/gifs des exos** *(prochaine itération)* : un emplacement est prévu par exercice pour brancher une base d'exercices open-source.
+Open the [live app](https://waltooo.github.io/sport-timer/) → browser menu → **Add to Home Screen**. It then works without a network connection.
 
-## Structure
+## Customize
+
+- **Programs & core exercises**: [`js/data.js`](js/data.js)
+- **Extended library** (488 exercises, remote images): [`js/library.js`](js/library.js) (generated)
+- **App icons**: regenerate with `node scripts/gen-icons.mjs` (no dependency)
+
+## Project structure
+
 ```
-index.html            # coquille
-css/style.css         # UI mobile-first, thème sombre
-js/data.js            # 5 programmes + base d'exercices
-js/timer.js           # moteur : construction de la séquence + chrono
-js/app.js             # rendu des écrans, audio, wake lock, service worker
-sw.js                 # cache offline (app shell)
-manifest.webmanifest  # PWA
-scripts/gen-icons.mjs # génération des icônes
+index.html            # shell
+css/style.css         # mobile-first UI, dark theme
+js/data.js            # 5 programs + core exercises + custom-session factory
+js/library.js         # extended exercise library (488)
+js/ex-images.js       # local frames for core exercises
+js/timer.js           # engine: build the step sequence + countdown
+js/store.js           # localStorage: history, customizations, favorites, custom sessions
+js/app.js             # screens, audio, wake lock, service worker
+sw.js                 # offline cache
+scripts/gen-icons.mjs # icon generation
 ```
 
-## Feuille de route
-- [x] Images de démonstration par exercice (animées, 2 frames) — 25/28 exos couverts
-- [ ] Images pour les 3 exos restants (pike push-ups, chaise au mur, burpees)
-- [ ] Historique des séances (lien avec mon carnet)
-- [ ] Réglage perso des temps effort/repos
-- [ ] Voix (annonce de l'exercice suivant)
+## Credits
 
-## Crédits
-- Images d'exercices : [free-exercise-db](https://github.com/yuhonas/free-exercise-db) — domaine public (Unlicense). Mapping des exercices → images dans le commit d'intégration ; frames dans `icons/ex/`.
+- Exercise images: [free-exercise-db](https://github.com/yuhonas/free-exercise-db) — public domain (Unlicense). Core exercises are bundled for offline use; the extended library loads images on demand and caches them.
 
----
-Projet perso, construit en pair-programming avec Claude Code. Code sous licence MIT.
+## License
+
+MIT — built as a personal project, in pair-programming with Claude Code.
