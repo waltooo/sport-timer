@@ -4,7 +4,7 @@ import { EX_FRAMES } from './ex-images.js'
 import { LIBRARY } from './library.js'
 import * as Store from './store.js'
 
-export const VERSION = '0.4.0'
+export const VERSION = '0.5.0'
 
 const app = document.getElementById('app')
 let engine = null
