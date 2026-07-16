@@ -4,7 +4,7 @@ import { EX_FRAMES } from './ex-images.js'
 import { LIBRARY } from './library.js'
 import * as Store from './store.js'
 
-export const VERSION = '0.5.1'
+export const VERSION = '0.6.0'
 
 const app = document.getElementById('app')
 let engine = null
@@ -12,6 +12,8 @@ let currentSteps = []
 let gifTimer = null
 let wakeLock = null
 let editState = null
+let currentRun = null // { progId, progName, progEmoji, scope, startISO }
+let histState = null  // { year, month, day, progId, selected:Set }
 
 // ---------- Exercices : core (FR, images offline) + bibliothèque (distante) ----------
 function getEx(id) { return EXERCISES[id] || LIBRARY[id] || { name: id, muscle: '', desc: '' } }
@@ -159,6 +161,7 @@ function renderHome() {
       ${Object.values(Store.getUserProgs()).map((p) => card(p.id, p, ' <span class="badge">à moi</span>')).join('')}
     </div>
     <button class="create-btn" id="create-prog">➕ Créer une séance</button>
+    <button class="lib-btn" id="open-hist">📅 Historique des séances</button>
     <button class="lib-btn" id="open-lib">📚 Tous les exercices</button>
     <footer class="home-foot">
       <p>Rotation conseillée : A → B → C → D. Séance du soir 1 soir sur 2.</p>
@@ -167,6 +170,7 @@ function renderHome() {
   app.querySelectorAll('.card-start').forEach((b) => b.addEventListener('click', () => startSession(b.dataset.prog)))
   app.querySelectorAll('.card-edit').forEach((b) => b.addEventListener('click', () => renderEditor(b.dataset.edit)))
   document.getElementById('open-lib').onclick = () => renderLibrary()
+  document.getElementById('open-hist').onclick = () => renderHistory()
   document.getElementById('create-prog').onclick = () => renderCreate()
 }
 
@@ -394,6 +398,11 @@ function runSession(progId, blockFilter) {
   const prog = getProgramme(progId)
   currentSteps = buildSequence(prog, blockFilter ? { blocks: blockFilter } : {})
   document.body.style.setProperty('--accent', prog.color)
+  let scope = 'Complète'
+  if (blockFilter && blockFilter.length === 1) {
+    scope = blockFilter[0] === 0 ? 'Muscu' : blockFilter[0] === 1 ? 'HIIT' : (prog.blocks[blockFilter[0]]?.title || 'Bloc')
+  }
+  currentRun = { progId, progName: prog.name, progEmoji: prog.emoji, scope, startISO: new Date().toISOString() }
   requestWakeLock()
   engine = new Engine(currentSteps, {
     onStep: (step, idx, total) => renderStep(prog, step, idx, total),
@@ -401,6 +410,26 @@ function runSession(progId, blockFilter) {
     onDone: () => renderDone(prog, progId),
   })
   engine.start()
+}
+
+// Enregistre la séance dans l'historique (si au moins 1 exo effectué).
+function saveSessionLog(status) {
+  if (!engine || !currentRun || !engine.log.length) { currentRun = null; return }
+  const log = engine.log
+  Store.addSession({
+    id: currentRun.startISO,
+    date: currentRun.startISO,
+    progId: currentRun.progId,
+    progName: currentRun.progName,
+    progEmoji: currentRun.progEmoji,
+    scope: currentRun.scope,
+    status, // 'done' | 'quit'
+    exercises: log,
+    totalSec: log.reduce((a, x) => a + x.actualSec, 0),
+    count: log.length,
+    skipped: log.filter((x) => x.skipped).length,
+  })
+  currentRun = null
 }
 
 const phaseClass = (t) => t === 'work' ? 'ph-work' : t === 'rest' ? 'ph-rest' : t === 'prep' ? 'ph-prep' : 'ph-info'
@@ -457,7 +486,7 @@ function renderStep(prog, step, idx, total) {
   document.getElementById('btn-skip').onclick = () => { beep(600, 0.08); engine.next() }
   document.getElementById('btn-prev').onclick = () => engine.prev()
   document.getElementById('btn-add').onclick = () => engine.addTime(20)
-  document.getElementById('btn-quit').onclick = () => { engine.stop(); clearGif(); renderHome() }
+  document.getElementById('btn-quit').onclick = () => { engine.stop(); saveSessionLog('quit'); clearGif(); renderHome() }
 
   if (step.type === 'work') { beep(940, 0.15); animateGif(step.exId) }
   else if (step.type === 'rest') beep(520, 0.15)
@@ -474,6 +503,7 @@ function updateTick(rem) {
 function renderDone(prog, progId) {
   clearGif(); releaseWakeLock()
   Store.recordDone(progId, todayISO())
+  saveSessionLog('done')
   beep(880, 0.15); setTimeout(() => beep(1180, 0.25), 160)
   document.body.style.setProperty('--accent', '#22c55e')
   app.innerHTML = `
@@ -481,10 +511,143 @@ function renderDone(prog, progId) {
       <div class="done-emoji">✅</div>
       <h2>Séance terminée !</h2>
       <p>${prog.emoji} ${prog.name} — bien joué.</p>
-      <p class="done-tip">Enregistrée le ${frDate(todayISO())}. Pense à noter ton ressenti dans ton sport-log 📓</p>
+      <p class="done-tip">Enregistrée dans l'historique 📅 — pense à la partager dans ton sport-log si tu veux.</p>
       <button class="primary big" id="btn-home">Retour à l'accueil</button>
     </div>`
   document.getElementById('btn-home').onclick = renderHome
+}
+
+// ---------- Historique des séances ----------
+const MONTHS_FR = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre']
+const DAYS_FR = ['L', 'M', 'M', 'J', 'V', 'S', 'D']
+function frDateTime(iso) {
+  const d = new Date(iso)
+  const p = (n) => String(n).padStart(2, '0')
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)} ${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+function renderHistory() {
+  clearGif()
+  document.body.style.setProperty('--accent', '#e4381C')
+  if (!histState) {
+    const d = new Date()
+    histState = { year: d.getFullYear(), month: d.getMonth(), day: null, progId: '', selected: new Set() }
+  }
+  const all = Store.getSessions()
+  const progs = [...new Map(all.map((s) => [s.progId, { id: s.progId, name: s.progName, emoji: s.progEmoji }])).values()]
+
+  app.innerHTML = `
+    <div class="history-screen">
+      <div class="topbar"><div class="heading">📅 Historique</div>
+        <button id="hi-back" class="quit" style="background:#475569">← Retour</button></div>
+      <div class="cal-nav">
+        <button id="hi-prev">‹</button>
+        <div class="cal-title">${MONTHS_FR[histState.month]} ${histState.year}</div>
+        <button id="hi-next">›</button>
+      </div>
+      <div id="hi-cal" class="calendar"></div>
+      <div class="lib-controls">
+        <select id="hi-prog"><option value="">Tous les programmes</option>${progs.map((p) => `<option value="${esc(p.id)}"${p.id === histState.progId ? ' selected' : ''}>${p.emoji} ${esc(p.name)}</option>`).join('')}</select>
+        ${histState.day ? `<button id="hi-clearday" class="fav-filter on">✕ ${histState.day}/${histState.month + 1}</button>` : ''}
+      </div>
+      <div id="hi-list"></div>
+      <div class="export-bar"><button id="hi-export" class="primary big" style="width:100%">Exporter</button></div>
+    </div>`
+
+  renderHistCal(all)
+  renderHistList(all)
+  document.getElementById('hi-back').onclick = () => { histState = null; renderHome() }
+  document.getElementById('hi-prev').onclick = () => { shiftMonth(-1); renderHistory() }
+  document.getElementById('hi-next').onclick = () => { shiftMonth(1); renderHistory() }
+  document.getElementById('hi-prog').onchange = (e) => { histState.progId = e.target.value; renderHistory() }
+  const cd = document.getElementById('hi-clearday'); if (cd) cd.onclick = () => { histState.day = null; renderHistory() }
+  document.getElementById('hi-export').onclick = () => exportSessions(all)
+}
+
+function shiftMonth(delta) {
+  let m = histState.month + delta, y = histState.year
+  if (m < 0) { m = 11; y-- } else if (m > 11) { m = 0; y++ }
+  histState.month = m; histState.year = y; histState.day = null
+}
+
+function inMonth(s) {
+  const d = new Date(s.date)
+  return d.getFullYear() === histState.year && d.getMonth() === histState.month &&
+    (!histState.progId || s.progId === histState.progId)
+}
+
+function renderHistCal(all) {
+  const box = document.getElementById('hi-cal'); if (!box) return
+  const daysWith = new Set(all.filter(inMonth).map((s) => new Date(s.date).getDate()))
+  const first = new Date(histState.year, histState.month, 1)
+  const offset = (first.getDay() + 6) % 7 // lundi = 0
+  const nDays = new Date(histState.year, histState.month + 1, 0).getDate()
+  let cells = DAYS_FR.map((d) => `<div class="cal-h">${d}</div>`).join('')
+  for (let i = 0; i < offset; i++) cells += '<div class="cal-c empty"></div>'
+  for (let day = 1; day <= nDays; day++) {
+    const has = daysWith.has(day)
+    const sel = histState.day === day
+    cells += `<div class="cal-c${has ? ' has' : ''}${sel ? ' sel' : ''}" data-day="${day}">${day}${has ? '<span class="dot"></span>' : ''}</div>`
+  }
+  box.innerHTML = cells
+  box.querySelectorAll('[data-day]').forEach((c) => c.addEventListener('click', () => {
+    const day = +c.dataset.day
+    histState.day = histState.day === day ? null : day
+    renderHistory()
+  }))
+}
+
+function filteredSessions(all) {
+  return all.filter(inMonth)
+    .filter((s) => !histState.day || new Date(s.date).getDate() === histState.day)
+    .sort((a, b) => b.date.localeCompare(a.date))
+}
+
+function renderHistList(all) {
+  const box = document.getElementById('hi-list'); if (!box) return
+  const list = filteredSessions(all)
+  if (!list.length) { box.innerHTML = `<p class="edit-hint">Aucune séance ce mois-ci.</p>`; return }
+  box.innerHTML = list.map((s) => {
+    const checked = histState.selected.has(s.id) ? 'checked' : ''
+    const badge = s.status === 'done' ? '<span class="st-done">terminée</span>' : '<span class="st-quit">arrêtée</span>'
+    const exos = s.exercises.map((x) => `<li>${esc(x.name)} — ${x.actualSec}/${x.plannedSec}s${x.skipped ? ' <em>(skippé)</em>' : ''}</li>`).join('')
+    return `<div class="hi-item">
+      <label class="hi-head">
+        <input type="checkbox" data-sel="${esc(s.id)}" ${checked}>
+        <span class="hi-title">${s.progEmoji} ${esc(s.progName)} <small>${esc(s.scope)}</small></span>
+        <span class="hi-meta">${frDateTime(s.date)} · ${fmt(s.totalSec)} · ${s.count} exos${s.skipped ? ` · ${s.skipped} skip` : ''} ${badge}</span>
+      </label>
+      <details><summary>détail</summary><ul class="hi-exos">${exos}</ul>
+        <button class="hi-del" data-del="${esc(s.id)}">🗑 supprimer</button></details>
+    </div>`
+  }).join('')
+  box.querySelectorAll('[data-sel]').forEach((c) => c.addEventListener('change', () => {
+    if (c.checked) histState.selected.add(c.dataset.sel); else histState.selected.delete(c.dataset.sel)
+  }))
+  box.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', () => {
+    if (confirm('Supprimer cette séance de l\'historique ?')) { Store.deleteSession(b.dataset.del); histState.selected.delete(b.dataset.del); renderHistory() }
+  }))
+}
+
+function exportSessions(all) {
+  let list = filteredSessions(all)
+  if (histState.selected.size) list = all.filter((s) => histState.selected.has(s.id)).sort((a, b) => b.date.localeCompare(a.date))
+  if (!list.length) { alert('Rien à exporter (sélectionne des séances ou change de filtre).'); return }
+  const md = ['## Séances sport — export\n']
+  list.forEach((s) => {
+    md.push(`### ${s.progEmoji} ${s.progName} — ${frDateTime(s.date)} (${s.scope}, ${s.status === 'done' ? 'terminée' : 'arrêtée'})`)
+    md.push(`Durée ${fmt(s.totalSec)} · ${s.count} exos · ${s.skipped} skippés`)
+    s.exercises.forEach((x) => md.push(`- ${x.name} : ${x.actualSec}/${x.plannedSec}s${x.skipped ? ' (skippé)' : ''}`))
+    md.push('')
+  })
+  const text = md.join('\n')
+  shareOrCopy(text, list.length)
+}
+
+async function shareOrCopy(text, n) {
+  try { if (navigator.share) { await navigator.share({ text }); return } } catch (e) { if (e && e.name === 'AbortError') return }
+  try { await navigator.clipboard.writeText(text); alert(`${n} séance(s) copiée(s) — colle le récap dans Telegram pour ton sport-log 📓`); return } catch (e) {}
+  window.prompt('Copie le récap :', text)
 }
 
 // ---------- Service worker ----------

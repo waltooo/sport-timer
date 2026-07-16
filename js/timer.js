@@ -58,6 +58,21 @@ export class Engine {
     this.onStep = onStep
     this.onDone = onDone
     this._int = null
+    this.log = []          // journal des exercices : {exId,name,plannedSec,actualSec,skipped}
+    this._recorded = new Set()
+  }
+
+  // Enregistre l'exercice qu'on quitte (une seule fois par index).
+  _recordLeave() {
+    const s = this.steps[this.i]
+    if (!s || s.type !== 'work' || this._recorded.has(this.i)) return
+    this._recorded.add(this.i)
+    const rem = Math.max(0, this.remaining)
+    this.log.push({
+      exId: s.exId, name: s.label, plannedSec: s.duration,
+      actualSec: Math.max(0, s.duration - rem),
+      skipped: rem > 0, // quitté avant la fin du chrono = skippé
+    })
   }
 
   start() {
@@ -80,6 +95,7 @@ export class Engine {
   }
 
   next() {
+    this._recordLeave()
     if (this.i >= this.steps.length - 1) {
       clearInterval(this._int)
       this.onDone()
@@ -106,7 +122,7 @@ export class Engine {
     return this.paused
   }
 
-  stop() { clearInterval(this._int) }
+  stop() { this._recordLeave(); clearInterval(this._int) }
 
   _emitStep() {
     const step = this.steps[this.i]

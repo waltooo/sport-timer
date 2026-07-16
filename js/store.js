@@ -54,6 +54,18 @@ export function getUserProg(id) { return getUserProgs()[id] || null }
 export function saveUserProg(p) { const all = getUserProgs(); all[p.id] = p; write(K_UPROGS, all) }
 export function deleteUserProg(id) { const all = getUserProgs(); delete all[id]; write(K_UPROGS, all) }
 
+// ---------- Journal des séances (historique détaillé) ----------
+const K_SESSIONS = 'st.sessions'
+export function getSessions() { return read(K_SESSIONS, []) }
+export function addSession(s) {
+  const all = getSessions()
+  all.push(s)
+  write(K_SESSIONS, all)
+}
+export function deleteSession(id) {
+  write(K_SESSIONS, getSessions().filter((s) => s.id !== id))
+}
+
 // ---------- Favoris ----------
 const K_FAVS = 'st.favs'
 export function getFavs() { return read(K_FAVS, []) }
